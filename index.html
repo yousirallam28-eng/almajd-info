@@ -8,6 +8,15 @@
 @media(max-width:760px){.topbar{padding:0 12px}.user-chip .identity{display:none}.sidebar{position:fixed;z-index:25;top:68px;bottom:0;right:0;box-shadow:-10px 0 25px #123a5810}.sidebar.closed{width:0}.main{padding:20px 14px}.heading h1{font-size:22px}.panel{padding:15px}.formgrid{grid-template-columns:1fr}.heading{align-items:center}.user-chip{gap:5px}.site-title{font-size:16px}.logout{font-size:13px;padding:6px}.table-wrap{margin:0 -3px}.network-stage{min-height:360px}}
 
 @media(max-width:760px){.network-stage{overflow-x:hidden;overflow-y:auto;touch-action:pan-y;cursor:auto}.network-canvas{position:relative;top:auto;right:auto;width:100%;min-width:0;min-height:0;padding:16px 12px;transform:none!important}.network-lines{top:0;right:0}.tree-root{width:100%;min-width:0;gap:18px}.tree-children{min-width:0;width:100%;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:12px;padding:18px 14px 0}.tree-branch,.tree-item-column{width:100%;align-items:stretch}.tree-node.section,.tree-node.item{width:100%;min-width:0;max-width:none}.tree-item-column{gap:8px}.tree-node.item{text-align:right}.network-stage .tree-node{font-size:calc(15px * var(--network-zoom,1));padding:calc(11px * var(--network-zoom,1)) calc(15px * var(--network-zoom,1))}.network-stage .tree-node.root{font-size:calc(17px * var(--network-zoom,1))}}
+
+/* Network hierarchy: grouped sibling levels and a horizontal row of inventory cards. */
+.network-canvas>.tree-root>.tree-children{border:1px solid #d8e5e1;border-radius:18px;background:#fbfdfc;padding:30px 24px 20px;gap:42px}
+.network-canvas .tree-branch>.tree-children{border:1px solid #e2ece8;border-radius:16px;background:linear-gradient(180deg,#fcfefd,#fff);padding:26px 18px 16px;gap:26px;margin-top:2px}
+.network-canvas .tree-item-column{display:flex;flex-direction:row;align-items:stretch;justify-content:center;flex-wrap:nowrap;gap:12px;padding:12px;border:1px solid #e2ece8;border-radius:14px;background:#fbfdfc}
+.network-canvas .tree-item-column .tree-leaf{align-items:stretch}
+.network-canvas .tree-item-column .tree-node.item{min-width:168px;max-width:190px;min-height:92px;display:flex;flex-direction:column;justify-content:center}
+.network-canvas .tree-node.section{border-color:#a9d8cb}
+@media(max-width:760px){.network-canvas>.tree-root>.tree-children{border:1px solid #d8e5e1;border-radius:14px;background:#fbfdfc;padding:14px 10px}.network-canvas .tree-branch>.tree-children{border:0;border-right:2px solid #d8e5e1;border-radius:0;background:transparent;padding:12px 12px 0 0;gap:12px;margin:0}.network-canvas .tree-item-column{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;gap:8px;padding:9px}.network-canvas .tree-item-column .tree-leaf{min-width:0}.network-canvas .tree-item-column .tree-node.item{min-width:0;max-width:none;min-height:0}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head><body>
