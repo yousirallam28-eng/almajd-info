@@ -70,5 +70,5 @@ installBtn?.addEventListener('click',installApp);installLoginBtn?.addEventListen
 window.addEventListener('appinstalled',()=>{setInstallButtonsVisible(false);pwaNotice('تم تثبيت التطبيق على جهازك.')});
 function updateOnlineState(){offlineBadge?.classList.toggle('visible',!navigator.onLine)}
 window.addEventListener('online',updateOnlineState);window.addEventListener('offline',updateOnlineState);updateOnlineState();
-if('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+if('serviceWorker' in navigator) window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').then(reg=>reg.update()).catch(()=>{}));
 </script></body></html>
