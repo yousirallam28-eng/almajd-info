@@ -15,6 +15,7 @@
 .network-canvas .tree-item-column .tree-node.item{width:168px;min-width:168px;max-width:190px;min-height:0}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 </head><body>
 <div id="loginView" class="login-wrap"><form id="loginForm" class="login-card" autocomplete="on"><img class="brand-logo" src="logo.jpg" alt="شعار تخزين المعلومات"><h1>تخزين المعلومات</h1><p class="sub">سجّل الدخول للوصول إلى مساحة العمل</p><div id="loginMessage" aria-live="polite"></div><div class="field"><label for="loginUser">اسم المستخدم</label><input id="loginUser" name="username" autocomplete="username" required></div><div class="field"><label for="loginPass">كلمة المرور</label><div class="password-row"><input id="loginPass" type="password" autocomplete="current-password" required><button class="btn quiet" type="button" id="togglePass">إظهار</button></div></div><button class="btn primary wide" type="submit">تسجيل الدخول</button><button class="btn secondary wide login-install" id="installLoginBtn" type="button">⇩ تثبيت التطبيق على الجهاز</button><p class="hint">نموذج محلي: البيانات محفوظة في هذا المتصفح فقط، وليست مناسبة لحماية بيانات حقيقية.</p></form></div>
 <div id="appView" class="app hidden"><header class="topbar"><div class="top-left"><button class="hamb" id="menuToggle" aria-label="فتح القائمة" aria-expanded="false">☰</button><div class="site-brand"><img class="top-logo" src="logo.jpg?v=4" alt=""><div class="site-title">تخزين المعلومات</div><span class="offline-badge" id="offlineBadge">دون اتصال</span><button class="install-btn" id="installBtn" type="button">⇩ تثبيت التطبيق</button></div></div><div class="user-chip"><div class="avatar" id="userAvatar">م</div><div class="identity"><strong id="currentUser"></strong><br><span id="currentRole"></span></div><button class="logout" id="logoutBtn">تسجيل الخروج</button></div></header><div class="layout"><aside id="sidebar" class="sidebar closed"><div class="side-label">القائمة</div><button class="navbtn" id="homeNav">▦ &nbsp; معلومات التخزين</button><button class="navbtn hidden" id="adminNav">⚙ &nbsp; لوحة الإدارة</button><button class="navbtn" id="networkNav">⌘ &nbsp; شبكة المعلومات</button></aside><main id="main" class="main" tabindex="-1"></main></div></div>
@@ -43,35 +44,47 @@ function downloadGroupExcel(groupId){
   if(!state||!groupId)return;
   const group=state.groups.find(x=>x.id===groupId);
   if(!group)return;
+  if(typeof XLSX==='undefined'){toast('تعذّر تحميل أداة Excel. تحقق من اتصال الإنترنت ثم حاول مرة أخرى.',true);return}
   const roots=db.sections(group.id);
   const maxDepth=Math.max(1,...state.sections.filter(x=>x.groupId===group.id).map(x=>sectionChain(x).length));
   const sectionHeaders=Array.from({length:maxDepth},(_,i)=>`المستوى ${i+1}`);
   const columns=[...sectionHeaders,'العناصر والمعلومات'];
-  const escExcel=value=>escape(String(value??'')).replace(/\r?\n/g,'<br>');
-  const itemCell=it=>`<strong>${escExcel(it.name)}</strong><br><span>العدد: ${Number.isFinite(Number(it.count))?Math.max(0,Number(it.count)):0}</span><br><span>التفاصيل: ${escExcel(it.details?.text||'—')}</span>`;
-  const rows=[];
+  const rows=[columns];
   const addSection=(section,path)=>{
     const currentPath=[...path,section.name];
     const children=db.sections(group.id,section.id);
     const items=db.items(section.id);
-    const sectionCells=currentPath.map(escExcel);
+    const sectionCells=[...currentPath];
     while(sectionCells.length<maxDepth)sectionCells.push('');
-    if(!items.length&&!children.length)rows.push(`<tr>${sectionCells.map((cell,i)=>`<td class="section-cell level-${i}">${cell}</td>`).join('')}<td class="item-cell">—</td></tr>`);
-    items.forEach(it=>rows.push(`<tr>${sectionCells.map((cell,i)=>`<td class="section-cell level-${i}">${cell}</td>`).join('')}<td class="item-cell">${itemCell(it)}</td></tr>`));
+    if(!items.length&&!children.length)rows.push([...sectionCells,'—']);
+    items.forEach(it=>rows.push([...sectionCells,`${it.name}\nالعدد: ${Number.isFinite(Number(it.count))?Math.max(0,Number(it.count)):0}\nالتفاصيل: ${it.details?.text||'—'}`]));
     children.forEach(child=>addSection(child,currentPath));
   };
   roots.forEach(root=>addSection(root,[]));
-  if(!rows.length)rows.push(`<tr><td colspan="${columns.length}" class="empty-cell">لا توجد أقسام أو عناصر في هذه المجموعة</td></tr>`);
-  const filename=`${String(group.name).replace(/[\\/:*?"<>|]/g,'-').slice(0,80)||'مجموعة'}-تصدير.xls`;
-  const table=`<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40" dir="rtl"><head><meta charset="UTF-8"><style>
-    @page{margin:.4in;direction:rtl}.sheet{direction:rtl;font-family:Arial,Tahoma,sans-serif;border-collapse:collapse;table-layout:fixed;width:100%}
-    .sheet td{border:2px solid #1f2937;vertical-align:top;text-align:right;padding:10px 12px;font-size:12pt;font-weight:700;white-space:normal;word-wrap:break-word;min-height:42px}
-    .title{background:#d9ead3;border:3px solid #111827;text-align:center!important;font-size:18pt!important;padding:18px!important;height:58px}
-    .headers{background:#e5e7eb;text-align:center!important;font-size:13pt!important;height:38px}.section-cell{background:#f8fafc}.item-cell{background:#fff7ed;line-height:1.65}.empty-cell{text-align:center!important;padding:18px!important}
-  </style></head><body><table class="sheet"><colgroup>${columns.map((_,i)=>`<col style="width:${i===columns.length-1?220:150}px">`).join('')}</colgroup><tr><td class="title" colspan="${columns.length}">${escExcel(group.name)}</td></tr><tr class="headers">${columns.map(escExcel).map(x=>`<td>${x}</td>`).join('')}</tr>${rows.join('')}</table></body></html>`;
-  const blob=new Blob([`\ufeff${table}`],{type:'application/vnd.ms-excel;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
-  toast(`تم تصدير مجموعة «${group.name}» إلى Excel.`);
+  if(rows.length===1)rows.push([`لا توجد أقسام أو عناصر في هذه المجموعة`,...Array(columns.length-1).fill('')]);
+  const titleRow=[group.name,...Array(columns.length-1).fill('')];
+  const sheetData=[titleRow,...rows];
+  const ws=XLSX.utils.aoa_to_sheet(sheetData);
+  ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:columns.length-1}}];
+  ws['!cols']=columns.map((_,i)=>({wch:i===columns.length-1?34:22}));
+  ws['!rows']=[{hpt:34},{hpt:26},...Array(rows.length-1).fill({hpt:48})];
+  const border={top:{style:'thin',color:{rgb:'1F2937'}},bottom:{style:'thin',color:{rgb:'1F2937'}},left:{style:'thin',color:{rgb:'1F2937'}},right:{style:'thin',color:{rgb:'1F2937'}}};
+  const base={font:{name:'Arial',sz:12,bold:true,color:{rgb:'111827'}},alignment:{vertical:'top',horizontal:'right',wrapText:true},border};
+  for(let c=0;c<columns.length;c++){
+    const titleCell=ws[XLSX.utils.encode_cell({r:0,c})];
+    if(titleCell)titleCell.s={font:{name:'Arial',sz:18,bold:true,color:{rgb:'111827'}},fill:{fgColor:{rgb:'D9EAD3'}},alignment:{horizontal:'center',vertical:'center',wrapText:true},border:{top:{style:'medium',color:{rgb:'111827'}},bottom:{style:'medium',color:{rgb:'111827'}},left:{style:'medium',color:{rgb:'111827'}},right:{style:'medium',color:{rgb:'111827'}}}};
+    const headerCell=ws[XLSX.utils.encode_cell({r:1,c})];
+    if(headerCell)headerCell.s={...base,font:{...base.font,sz:13},fill:{fgColor:{rgb:'E5E7EB'}},alignment:{horizontal:'center',vertical:'center',wrapText:true}};
+  }
+  for(let r=2;r<sheetData.length;r++)for(let c=0;c<columns.length;c++){
+    const cell=ws[XLSX.utils.encode_cell({r,c})];
+    if(cell)cell.s={...base,fill:{fgColor:{rgb:c===columns.length-1?'FFF2CC':'F8FAFC'}}};
+  }
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'المجموعة');
+  const filename=`${String(group.name).replace(/[\\/:*?"<>|]/g,'-').slice(0,80)||'مجموعة'}-تصدير.xlsx`;
+  XLSX.writeFile(wb,filename,{bookType:'xlsx',compression:true});
+  toast(`تم تصدير مجموعة «${group.name}» إلى Excel بصيغة حديثة.`);
 }
 function renderGroup(id){if(!session)return;const g=state.groups.find(x=>x.id===id);if(!g){goHome();return}activeGroup=id;activeSection=null;const sections=db.sections(id);main.innerHTML=`<div class="crumb"><button data-action="home">معلومات التخزين</button><span>←</span><strong>${escape(g.name)}</strong></div><div class="heading"><div><h1>${escape(g.name)}</h1><div class="muted">الأقسام الرئيسية التابعة لهذه المجموعة</div></div><div class="card-actions"><button class="btn secondary" data-action="export-group" data-id="${escape(g.id)}">تصدير Excel</button></div></div>${sections.length?`<div class="cards">${sections.map(s=>`<article class="card"><div class="card-title">${escape(s.name)}</div><p class="muted">${db.sections(g.id,s.id).length} فروع · ${db.items(s.id).length} عناصر</p><button class="btn secondary small" data-action="open-section" data-id="${escape(s.id)}">فتح القسم ←</button></article>`).join('')}</div>`:empty('لا توجد أقسام بعد','لا تتوفر أقسام في هذه المجموعة حاليًا.')}`}
 function renderSection(id){if(!session)return;const s=state.sections.find(x=>x.id===id),g=s&&state.groups.find(x=>x.id===s.groupId);if(!s||!g){goHome();return}activeGroup=g.id;activeSection=id;const items=db.items(id),children=db.sections(g.id,id),chain=sectionChain(s);const crumbs=chain.map((x,i)=>`${i<chain.length-1?`<button data-action="open-section" data-id="${escape(x.id)}">${escape(x.name)}</button>`:`<strong>${escape(x.name)}</strong>`}`).join('<span>←</span>');main.innerHTML=`<div class="crumb"><button data-action="home">معلومات التخزين</button><span>←</span><button data-action="open-group" data-id="${escape(g.id)}">${escape(g.name)}</button><span>←</span>${crumbs}</div><div class="heading"><div><h1>${escape(s.name)}</h1><div class="muted">الأقسام الفرعية والعناصر داخل هذا القسم</div></div>${canManage()?btn('＋ إضافة قسم فرعي','add-child-section','primary'):''}</div>${children.length?`<h2 class="section-title">الأقسام الفرعية</h2><div class="cards" style="margin-bottom:20px">${children.map(c=>`<article class="card"><div class="card-title">${escape(c.name)}</div><p class="muted">${db.sections(g.id,c.id).length} فروع · ${db.items(c.id).length} عناصر</p><button class="btn secondary small" data-action="open-section" data-id="${escape(c.id)}">فتح القسم ←</button>${canManage()?`<div class="card-actions"><button class="btn quiet small" data-action="rename-section" data-id="${escape(c.id)}">تعديل الاسم</button><button class="btn danger small" data-action="delete-section" data-id="${escape(c.id)}">حذف القسم</button></div>`:''}</article>`).join('')}</div>`:''}<div class="toolbar"><h2 class="section-title">العناصر والمعلومات</h2><input class="search" id="itemSearch" placeholder="ابحث عن عنصر في هذا القسم" aria-label="البحث عن عنصر"><span class="stats" id="itemCount">${items.length} عناصر</span>${canManage()?btn('＋ إضافة عنصر','add-item','secondary'):''}</div><div id="itemList"></div>`;$('#itemSearch').addEventListener('input',renderItemList);renderItemList()}
